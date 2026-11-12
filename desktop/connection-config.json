@@ -1,0 +1,10 @@
+{
+  "lanTimeoutMs": 1500,
+  "wanTimeoutMs": 2500,
+  "healthIntervalMs": 15000,
+  "failureThreshold": 2,
+  "lanRecoveryIntervalMs": 60000,
+  "lanRecoverySuccesses": 2,
+  "offlineRetryMs": [15000, 30000, 60000, 120000, 300000],
+  "tickMs": 1000
+}

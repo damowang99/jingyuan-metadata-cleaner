@@ -1,0 +1,9 @@
+(function(root){
+function filterRows(rows,{query='',from='',to=''}={}){const q=query.trim().toLowerCase();if(from&&to&&from>to)return [];return rows.filter(r=>(String(r.name)+' '+String(r.username)).toLowerCase().includes(q)&&(!from||r.day>=from)&&(!to||r.day<=to)).sort((a,b)=>b.day.localeCompare(a.day)||String(a.username).localeCompare(String(b.username)));}
+function totals(rows){return {fields:rows.reduce((a,r)=>a+Number(r.fields||0),0),files:rows.reduce((a,r)=>a+Number(r.files||0),0),failed:rows.reduce((a,r)=>a+Number(r.failed||0),0),users:new Set(rows.map(r=>r.username)).size};}
+function ranking(rows){const members=new Map();for(const r of rows){const current=members.get(r.username)||{username:r.username,name:r.name,fields:0};current.fields+=Number(r.fields||0);members.set(r.username,current);}return [...members.values()].sort((a,b)=>b.fields-a.fields||a.username.localeCompare(b.username)).slice(0,4);}
+function trend(rows,endDay){const end=new Date(endDay+'T00:00:00Z');if(!Number.isFinite(end.getTime()))return [];return Array.from({length:7},(_,i)=>{const day=new Date(end.getTime()-(6-i)*86400000).toISOString().slice(0,10);return {day,fields:rows.filter(r=>r.day===day).reduce((a,r)=>a+Number(r.fields||0),0)};});}
+function paginate(rows,page,size=8){const pages=Math.max(1,Math.ceil(rows.length/size)),current=Math.min(Math.max(1,page),pages);return {rows:rows.slice((current-1)*size,current*size),page:current,pages,total:rows.length};}
+function csv(rows){const cell=v=>'"'+String(v).replace(/^[=+@-]/,"'"+'$&').replaceAll('"','""')+'"';return '\ufeff'+[['姓名','账号','日期','扫描文件（路径去重）','清除字段','文件','失败'],...rows.map(r=>[r.name,r.username,r.day,r.uniqueScanned??'未上报',r.fields,r.files,r.failed])].map(a=>a.map(cell).join(',')).join('\r\n');}
+const model={filterRows,totals,ranking,trend,paginate,csv};if(typeof module!=='undefined')module.exports=model;else root.StatsModel=model;
+})(globalThis);

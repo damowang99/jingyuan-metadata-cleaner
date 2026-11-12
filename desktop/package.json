@@ -1,0 +1,109 @@
+{
+  "name": "adobe-metadata-cleaner",
+  "version": "1.8.17",
+  "description": "Adobe metadata cleaner",
+  "author": "Cleaner Team",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test ../test/*.test.js",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "exiftool-vendored": "30.4.0"
+  },
+  "devDependencies": {
+    "electron": "37.2.6",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.cleaner.metadata",
+    "productName": "Metadata Cleaner",
+    "files": [
+      "*.js",
+      "*.html",
+      "*.css",
+      "tray-icon.json",
+      "update-config.json",
+      "update-helper.ps1",
+      "app-icon.png",
+      "!bin{,/**}",
+      "windows-update.py",
+      "connection-config.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/exiftool-vendored.pl/**",
+      "**/node_modules/exiftool-vendored.exe/**"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "用于连接您指定的局域网服务器，完成账号登录、同步处理统计和自动更新。"
+      },
+      "files": [
+        "*.js",
+        "*.html",
+        "*.css",
+        "tray-icon.json",
+        "update-config.json",
+        "update-helper.ps1",
+        "app-icon.png",
+        "!bin{,/**}",
+        "!node_modules/exiftool-vendored.exe{,/**}",
+        "connection-config.json"
+      ],
+      "extraResources": [
+        {
+          "from": "bin/local-server",
+          "to": "bin/local-server"
+        },
+        {
+          "from": "bin/pdf-clean",
+          "to": "bin/pdf-clean"
+        }
+      ],
+      "icon": "assets/app.icns"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/app.ico",
+      "files": [
+        "*.js",
+        "*.html",
+        "*.css",
+        "tray-icon.json",
+        "update-config.json",
+        "update-helper.ps1",
+        "app-icon.png",
+        "!bin{,/**}",
+        "!node_modules/exiftool-vendored.pl{,/**}",
+        "windows-update.py",
+        "connection-config.json"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": false,
+      "installerIcon": "assets/app.ico",
+      "uninstallerIcon": "assets/app.ico"
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://updates.example.com/cleaner/"
+    },
+    "compression": "maximum",
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "beforePack": "../tools/verify-platform-components.js",
+    "afterPack": "../tools/patch-windows-icon.js"
+  }
+}

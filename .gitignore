@@ -1,0 +1,45 @@
+# Dependencies and build products
+node_modules/
+dist/
+build/
+bin/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.spec
+.venv/
+venv/
+
+# Local configuration, secrets and runtime data
+.env
+.env.*
+!.env.example
+secrets/
+data/
+backups/
+releases/
+compose.override.yaml
+settings.json
+history.json
+pending-files.json
+scan-inventory.json
+update-result.json
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.db-journal
+*.log
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Installers and local archives
+*.zip
+*.exe
+*.dmg
+*.msi
+.DS_Store
+Thumbs.db

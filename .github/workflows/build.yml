@@ -1,0 +1,36 @@
+name: Build installers
+on: [workflow_dispatch]
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pikepdf pyinstaller
+      - run: pyinstaller --onedir --name pdf-clean --distpath desktop/bin desktop/pdf_clean.py
+      - if: runner.os == 'macOS'
+        run: pyinstaller --onedir --name local-server --paths server --add-data server/web:web --distpath desktop/bin desktop/windows-runtime-source/local_server.py
+      - run: npm install
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
+      - run: npm run dist -- --publish never
+        working-directory: desktop
+        env:
+          CSC_LINK: ${{ runner.os == 'Windows' && secrets.WIN_CSC_LINK || secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ runner.os == 'Windows' && secrets.WIN_CSC_KEY_PASSWORD || secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: desktop/dist/*

@@ -1,0 +1,5 @@
+# Example LAN binding. Set LAN_BIND_IP to your host address before use.
+services:
+  backend:
+    ports:
+      - "${LAN_BIND_IP:-192.168.10.10}:${APP_PORT:-8787}:8787"

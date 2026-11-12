@@ -1,0 +1,19 @@
+const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),{execFile}=require('node:child_process'),{promisify}=require('node:util');const run=promisify(execFile);
+function selected(argv){const i=argv.indexOf('--context-clean');if(i<0)return [];return argv.slice(i+1).filter(x=>typeof x==='string'&&path.isAbsolute(x)).slice(0,200);}
+function xml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+async function install({platform=process.platform,executable=process.execPath,home=os.homedir(),runner=run}={}){
+ if(platform==='win32'){
+  const command='"'+executable+'" --context-clean "%1"';
+  for(const kind of ['*','Directory']){const key='HKCU\\Software\\Classes\\'+kind+'\\shell\\JingyuanClean';await runner('reg.exe',['add',key,'/ve','/d','使用净元清理','/f'],{windowsHide:true});await runner('reg.exe',['add',key,'/v','Icon','/d',executable,'/f'],{windowsHide:true});await runner('reg.exe',['add',key+'\\command','/ve','/d',command,'/f'],{windowsHide:true});}
+  return '已添加到资源管理器右键菜单；Windows 11 可能需要点击“显示更多选项”。';
+ }
+ if(platform==='darwin'){
+  const folder=path.join(home,'Library','Services','使用净元清理.workflow','Contents');await fs.mkdir(folder,{recursive:true});
+  const script='nohup '+"'"+executable.replace(/'/g,"'\\''")+"'"+' --context-clean "$@" >/dev/null 2>&1 &';
+  const plist='<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>AMApplicationBuild</key><string>523</string><key>AMApplicationVersion</key><string>2.10</string><key>AMDocumentVersion</key><integer>2</integer><key>actions</key><array><dict><key>action</key><dict><key>AMActionVersion</key><string>2.0.3</string><key>AMApplication</key><array><string>Automator</string></array><key>AMParameterProperties</key><dict/><key>AMProvides</key><dict><key>Container</key><string>List</string><key>Types</key><array><string>com.apple.cocoa.string</string></array></dict><key>AMAccepts</key><dict><key>Container</key><string>List</string><key>Types</key><array><string>com.apple.cocoa.string</string></array></dict><key>ActionBundlePath</key><string>/System/Library/Automator/Run Shell Script.action</string><key>ActionName</key><string>Run Shell Script</string><key>ActionParameters</key><dict><key>COMMAND_STRING</key><string>'+xml(script)+'</string><key>shell</key><string>/bin/zsh</string><key>inputMethod</key><integer>1</integer></dict><key>BundleIdentifier</key><string>com.apple.RunShellScript</string><key>Class Name</key><string>RunShellScriptAction</string><key>UUID</key><string>0A9E1362-A2AF-4728-B41C-AE4C51070001</string></dict></dict></array><key>connectors</key><dict/><key>workflowMetaData</key><dict><key>serviceInputTypeIdentifier</key><string>com.apple.Automator.fileSystemObject</string><key>serviceOutputTypeIdentifier</key><string>com.apple.Automator.nothing</string><key>serviceProcessesInput</key><integer>0</integer><key>serviceApplicationBundleID</key><string>com.apple.finder</string><key>serviceApplicationPath</key><string>/System/Library/CoreServices/Finder.app</string><key>workflowTypeIdentifier</key><string>com.apple.Automator.servicesMenu</string></dict></dict></plist>';
+  await fs.writeFile(path.join(folder,'document.wflow'),plist);await fs.writeFile(path.join(folder,'Info.plist'),'<?xml version="1.0"?><plist version="1.0"><dict><key>NSServices</key><array><dict><key>NSMenuItem</key><dict><key>default</key><string>使用净元清理</string></dict><key>NSMessage</key><string>runWorkflowAsService</string><key>NSSendFileTypes</key><array><string>public.item</string></array></dict></array></dict></plist>');
+  return '已添加到 Finder“快速操作/服务”；如未显示，可在系统设置的扩展中启用。';
+ }
+ throw Error('仅支持 Windows 和 macOS');
+}
+module.exports={selected,install};

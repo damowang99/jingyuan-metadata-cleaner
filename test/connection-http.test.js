@@ -1,0 +1,19 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),{spawn}=require('node:child_process'),{createInterface}=require('node:readline');
+const {ServerConnection,LAN,WAN}=require('../desktop/server-connection'),{createConnectionFetch}=require('../desktop/connection-fetch'),{createClientFetch}=require('../desktop/client-network');
+test('real HTTP dual-entry backend shares identity and SQLite; failover preserves device and idempotent statistics',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'cleaner-real-http-'));let child;
+ try{
+ child=spawn('python3',[path.join(__dirname,'fixtures/connection/server.py'),root],{stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});let error='';child.stderr.on('data',b=>error+=b);const lines=createInterface({input:child.stdout})[Symbol.asyncIterator]();
+ const first=await Promise.race([lines.next(),new Promise((_,reject)=>child.once('exit',()=>reject(Error('Fixture stopped '+error))))]);const ports=JSON.parse(first.value),sent=[];
+ let loseEventResponse=true,eventSubmissions=0;
+ const fetcher=createClientFetch({version:'1.8.14',fetcher:async(url,opts)=>{sent.push(url);const u=new URL(url),port=u.origin===LAN?ports.lan:ports.wan;const response=await fetch('http://127.0.0.1:'+port+u.pathname+u.search,opts);if(u.pathname==='/api/events'){eventSubmissions++;if(loseEventResponse){loseEventResponse=false;throw Error('response lost after server commit');}}return response;}});
+ let now=100000;const m=new ServerConnection({fetcher,now:()=>now});await m.check();assert.equal(m.phase,'needs-pairing');const id=m.candidate.id;await m.confirmPair({...m.candidate});assert.equal(m.expectedId,id);assert.equal(m.current,LAN);
+ const request=createConnectionFetch({connection:()=>m,fetcher});const post=async(route,data,token)=>{const r=await request(LAN+route,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(data)});assert.equal(r.ok,true,await r.clone().text());return r.json();};
+ const device={deviceId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',deviceSecret:'a'.repeat(64),osUsername:'Fixture',computer:'Fixture-PC'},identity=await post('/api/device/login',device);assert.equal(identity.username,'device-'+device.deviceId);
+ const event={id:'same-stable-event',fields:2,files:1,failed:0};await assert.rejects(post('/api/events',event,identity.token),/无法连接|response lost/);const firstRetry=await post('/api/events',event,identity.token);assert.equal(firstRetry.accepted,true);assert.equal(firstRetry.event_id,event.id);assert.equal(firstRetry.duplicate,true);assert.ok(eventSubmissions>=2);
+ const denied=await request(LAN+'/api/stats',{headers:{Authorization:'Bearer '+identity.token}});assert.equal(denied.status,403);assert.equal(m.failures,0);
+ child.stdin.write('lan\n');assert.equal(JSON.parse((await lines.next()).value).stopped,'lan');now+=15000;await m.check();assert.equal(m.current,LAN);now+=15000;await m.check();assert.equal(m.current,WAN);assert.equal(m.expectedId,id);
+ const again=await post('/api/device/login',device);assert.equal(again.username,identity.username);const laterRetry=await post('/api/events',event,again.token);assert.equal(laterRetry.duplicate,true);
+ const admin=await post('/api/login',{username:'admin',password:'fixture-admin-password'});const stats=await (await request(LAN+'/api/stats',{headers:{Authorization:'Bearer '+admin.token}})).json();assert.equal(stats.length,1);assert.equal(stats[0].files,1);assert.equal(stats[0].fields,2);assert.ok(sent.at(-1).startsWith(WAN));
+ }finally{if(child){child.stdin.end();const exit=new Promise(r=>child.once('exit',r));if(child.exitCode===null)await exit;}await fs.rm(root,{recursive:true,force:true});}
+});

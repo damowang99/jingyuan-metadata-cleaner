@@ -1,0 +1,7 @@
+const $=id=>document.getElementById(id);JingUI.paint();let state=null,submitting=false,serverInitialized=false;const notice=text=>$('status').textContent=text;
+function serverSecurity(){let url;try{const value=$('server').value.trim();url=new URL(value.includes('://')?value:'http://'+value);}catch{}const publicHttp=url?.origin==='http://203.0.113.10:8787';$('server-security').hidden=!publicHttp;$('server-security').textContent=publicHttp?'该外网地址使用 HTTP，账号密码会明文传输。':'';}
+function render(s){state=s;if(!serverInitialized){$('server').value=s.configuredServer;serverInitialized=true;}$('login-version').textContent='v'+s.version;serverSecurity();}
+async function auth(register){if(submitting)return;submitting=true;$('login').disabled=$('register').disabled=true;try{await cleaner.auth({server:$('server').value,username:$('username').value,name:$('name').value,password:$('password').value,register});$('password').value='';await cleaner.openPage('work');}catch(e){notice(e.message);}finally{submitting=false;$('login').disabled=$('register').disabled=false;}}
+$('server').oninput=serverSecurity;
+$('authform').onsubmit=e=>{e.preventDefault();auth(false);};$('register').onclick=()=>auth(true);$('diagnose').onclick=async()=>{try{notice('正在检查连接…');notice((await cleaner.diagnoseNetwork($('server').value)).join('\n'));}catch(e){notice(e.message);}};$('login-update').onclick=async()=>{try{await cleaner.checkUpdate();}catch(e){notice(e.message);}};
+cleaner.onState(render);cleaner.notice(notice);cleaner.state().then(render).catch(e=>notice(e.message));

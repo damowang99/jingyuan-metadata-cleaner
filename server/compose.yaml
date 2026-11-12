@@ -1,0 +1,60 @@
+name: adobe-cleaner
+services:
+  backend:
+    build: .
+    image: adobe-cleaner-backend:1.8.17
+    restart: unless-stopped
+    init: true
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8787"
+      RELEASE_ROOT: /releases
+      DATABASE: /data/cleaner.sqlite3
+      BACKUP_DIR: /backups
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      REQUIRE_ADMIN_PASSWORD: "1"
+      ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+    secrets:
+      - admin_password
+    ports:
+      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-8787}:8787"
+    volumes:
+      - cleaner_data:/data
+      - cleaner_backups:/backups
+      - ./releases:/releases:ro
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  proxy:
+    image: caddy:2-alpine
+    profiles: [https]
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+secrets:
+  admin_password:
+    file: ./secrets/admin_password.txt
+volumes:
+  cleaner_data:
+  cleaner_backups:
+  caddy_data:
+  caddy_config:

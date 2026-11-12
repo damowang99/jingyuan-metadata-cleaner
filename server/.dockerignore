@@ -1,0 +1,14 @@
+*
+!server.py
+!device_auth.py
+!manage.py
+!healthcheck.py
+!release_api.py
+!web/
+!web/**
+
+!fleet.py
+
+!file_records.py
+
+!scan_inventory.py
